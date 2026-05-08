@@ -13,12 +13,40 @@ source .venv/bin/activate
 uv pip install -e .
 playwright install chromium
 
-# Run a session
-tracker run scripts/redoio-home.yaml
+# Record a session interactively (opens a browser, close it when done)
+tracker record https://example.com scripts/my-flow.yaml
+
+# Replay a recorded session and capture network traffic
+tracker run scripts/my-flow.yaml
 
 # Output appears under runs/<timestamp>_<session-name>/
 ```
 
+## Recording tips
+
+**Prefer sidebar / persistent navigation over inline recommendation links.**
+Links inside AI-generated or dynamic content (e.g. `st.page_link` widgets that appear after a query) may not be present on every replay. Use sidebar nav links or add a `goto` step directly:
+
+```yaml
+- id: open_bias_analysis
+  action: goto
+  url: https://tool.redoio.info/bias_analysis
+  wait_for: load
+  settle: {wait_ms: 2000}
+```
+
+**After recording, review the YAML before running.** Step IDs and locators are editable — if a locator looks fragile (e.g. a CSS fallback like `css: div > span:nth-of-type(3)`), replace it with a more stable one.
+
+## Troubleshooting
+
+**`ModuleNotFoundError: No module named 'tracker'`**
+macOS marks `.pth` files created by `uv` as hidden, and Python 3.12+ skips them. The setup includes a `sitecustomize.py` that bypasses this. If you see this error after a fresh `uv pip install -e .`, run:
+```bash
+chflags -R nohidden .venv
+```
+
 ## Status
 
-Phase 1 (MVP) — runner + capture pipeline. No decoders or LLM report yet.
+Phase 1 (MVP) — recorder + runner + capture pipeline. No decoders or LLM report yet.
+
+Open issues: [github.com/shay-o/Automated-Web-Tracking-Analysis/issues](https://github.com/shay-o/Automated-Web-Tracking-Analysis/issues)
