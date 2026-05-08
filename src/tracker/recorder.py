@@ -37,6 +37,18 @@ _RECORD_JS = r"""
     return imp;
   }
 
+  // Return text content with icon elements removed.
+  // Streamlit (and most icon libraries) mark icon glyphs as [role="img"] or
+  // [translate="no"] so screen readers skip them. We do the same so that
+  // accessible names don't pick up glyph names like "link", "search", "star".
+  function textWithoutIcons(el) {
+    const clone = el.cloneNode(true);
+    clone.querySelectorAll('[role="img"], [translate="no"]').forEach(function(s) {
+      s.remove();
+    });
+    return clone.textContent.trim();
+  }
+
   function getAccessibleName(el) {
     // 1. aria-label
     const al = el.getAttribute('aria-label');
@@ -60,8 +72,8 @@ _RECORD_JS = r"""
     // 4. placeholder
     const ph = el.getAttribute('placeholder');
     if (ph && ph.trim()) return ph.trim();
-    // 5. text content (buttons, links, short labels)
-    const txt = el.textContent && el.textContent.trim();
+    // 5. text content — strip icon-font spans first so glyphs don't pollute the name
+    const txt = textWithoutIcons(el);
     if (txt && txt.length > 0 && txt.length <= 80) return txt;
     // 6. title
     const title = el.getAttribute('title');
