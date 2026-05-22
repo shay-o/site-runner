@@ -1,0 +1,65 @@
+session: bias_analysis
+start_url: https://tool.redoio.info/bias_analysis
+viewport:
+  width: 1280
+  height: 800
+consent:
+  strategy: ignore
+steps:
+- id: goto_bias_analysis
+  action: goto
+  url: https://tool.redoio.info/bias_analysis
+  wait_for: load
+  settle: {wait_ms: 3000}
+
+- id: click_load
+  action: click
+  locator: {role: button, name: Load}
+  settle: {wait_ms: 5000}
+
+- id: fill_find_cases_query
+  action: fill
+  locator: {role: textbox, name: 'Tell us what you''re looking for from the variables
+      above. Be as specific as possible:'}
+  value: Armed robberies in Alameda county
+  settle: {wait_ms: 1000}
+
+- id: click_run
+  action: click
+  locator: {role: button, name: Run, first: true}
+  settle: {wait_ms: 20000}
+
+- id: open_ethnic_groups_multiselect
+  action: click
+  locator: {role: combobox, name: 'Select exactly two ethnic groups:'}
+  settle: {wait_ms: 1000}
+
+- id: select_white
+  action: click
+  locator: {role: option, name: White}
+  settle: {wait_ms: 500}
+
+- id: select_hispanic
+  action: click
+  locator: {role: option, name: Hispanic}
+  settle: {wait_ms: 500}
+
+- id: press_escape_close_multiselect
+  action: press
+  locator: {role: combobox, name: 'Select exactly two ethnic groups:'}
+  key: Escape
+  settle: {wait_ms: 500}
+
+- id: click_calculate_bias_metrics
+  action: click
+  locator: {role: button, name: Calculate Bias Metrics}
+  settle: {wait_ms: 30000}
+
+- id: wait_for_report
+  action: wait
+  settle: {wait_for_selector: 'text=Bias Analysis Report'}
+
+- id: click_statistical_analysis_docx
+  action: click
+  locator: {role: button, name_contains: 'Statistical Analysis'}
+  settle: {wait_ms: 5000}
