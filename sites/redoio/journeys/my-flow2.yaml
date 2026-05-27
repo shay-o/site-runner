@@ -1,10 +1,15 @@
-session: my-flow2
+journey: my-flow2
+role: default
+use_case: null   # tool-suggestion flow; will be linked to a Use Case once one is drafted
 start_url: https://tool.redoio.info/
 viewport:
   width: 1280
   height: 800
 consent:
   strategy: ignore
+success_condition:
+  description: User describes a need, accepts the suggested Tool (Bias Analysis), and lands on its Load screen.
+
 steps:
 - id: load_home
   action: goto

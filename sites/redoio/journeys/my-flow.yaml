@@ -1,0 +1,18 @@
+journey: my-flow
+role: default
+use_case: null   # smoke test, not tied to a Use Case
+start_url: https://tool.redoio.info/
+viewport:
+  width: 1280
+  height: 800
+consent:
+  strategy: ignore
+success_condition:
+  description: Home page loads.
+
+steps:
+- id: load_home
+  action: goto
+  url: https://tool.redoio.info/
+  wait_for: load
+  settle: {wait_ms: 3000}

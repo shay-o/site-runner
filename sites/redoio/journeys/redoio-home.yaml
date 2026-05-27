@@ -1,10 +1,17 @@
-session: redoio-home
+journey: redoio-home
+role: default
+use_case: null   # smoke test, not tied to a Use Case
 start_url: https://tool.redoio.info/
 viewport:
   width: 1280
   height: 800
 consent:
   strategy: ignore
+success_condition:
+  description: Home page loads and the Streamlit app shell is visible.
+  check:
+    type: selector_visible
+    selector: '[data-testid="stApp"]'
 
 steps:
   - id: load_home

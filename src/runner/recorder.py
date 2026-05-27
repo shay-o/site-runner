@@ -274,13 +274,14 @@ def _write_yaml(doc: dict, output_path: Path) -> None:
 def record(
     start_url: str,
     output_path: Path,
-    session_name: str | None = None,
+    journey_slug: str | None = None,
+    role: str = "default",
     viewport_width: int = 1280,
     viewport_height: int = 800,
     default_settle_ms: int = 1500,
 ) -> None:
-    if session_name is None:
-        session_name = output_path.stem
+    if journey_slug is None:
+        journey_slug = output_path.stem
 
     steps: list[dict] = []
     seen_ids: set[str] = set()
@@ -317,7 +318,8 @@ def record(
         print(f"  [{atype}] {loc_str}{val_str}")
 
     print()
-    print(f"  Session : {session_name}")
+    print(f"  Journey : {journey_slug}")
+    print(f"  Role    : {role}")
     print(f"  Start   : {start_url}")
     print(f"  Output  : {output_path}")
     print()
@@ -359,12 +361,18 @@ def record(
     steps_written = len(steps)
     _write_yaml(
         {
-            "session": session_name,
+            "journey": journey_slug,
+            "role": role,
+            "use_case": None,
             "start_url": start_url,
             "viewport": {"width": viewport_width, "height": viewport_height},
             "consent": {"strategy": "ignore"},
+            "success_condition": {
+                "description": "TODO: describe what success looks like for this Journey.",
+            },
             "steps": steps,
         },
         output_path,
     )
     print(f"\n  Wrote {steps_written} step(s) → {output_path}")
+    print("  Reminder: fill in success_condition.description (and optionally .check) before running.")

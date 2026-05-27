@@ -2,28 +2,29 @@ from __future__ import annotations
 
 import base64
 import json
+import shutil
 import threading
 import time
-from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from playwright.sync_api import (
-    BrowserContext,
     Page,
     Request,
     Response,
-    Route,
     WebSocket,
     sync_playwright,
 )
 
-from tracker.action_script import ActionScript, Locator, Settle, Step, load_script
+from runner import __version__
+from runner.journey import Journey, Locator, Settle, Step, SuccessCondition, load_journey
 
 WEBDRIVER_HIDE_SCRIPT = """
 Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
 """
+
+RunType = Literal["analytics", "usability"]
 
 
 def _now_iso() -> str:
@@ -131,7 +132,7 @@ def _execute_step(page: Page, step: Step) -> None:
 def _make_request_handler(
     writer: JsonlWriter, tracker: StepTracker
 ) -> tuple[Any, Any, Any]:
-    request_starts: dict[str, dict[str, Any]] = {}
+    request_starts: dict[int, dict[str, Any]] = {}
     lock = threading.Lock()
 
     def on_request(request: Request) -> None:
@@ -297,14 +298,63 @@ def _snapshot_datalayer(page: Page) -> Any:
         return None
 
 
-def run(script_path: Path, out_dir: Path | None = None, headless: bool = False) -> Path:
-    script = load_script(script_path)
+def _evaluate_success(page: Page, condition: SuccessCondition) -> dict[str, Any]:
+    """Evaluate the optional executable success check and return a result dict."""
+    result: dict[str, Any] = {"description": condition.description}
+    if condition.check is None:
+        result["check"] = None
+        return result
+    if condition.check.type == "selector_visible":
+        try:
+            visible = page.locator(condition.check.selector).first.is_visible()
+            result["check"] = {
+                "type": condition.check.type,
+                "selector": condition.check.selector,
+                "passed": bool(visible),
+            }
+        except Exception as e:
+            result["check"] = {
+                "type": condition.check.type,
+                "selector": condition.check.selector,
+                "passed": False,
+                "error": repr(e),
+            }
+    return result
+
+
+def _find_site_root(journey_path: Path) -> Path | None:
+    """Walk up from a journey YAML to find its containing sites/<slug>/ directory."""
+    for parent in journey_path.resolve().parents:
+        if parent.parent.name == "sites":
+            return parent
+    return None
+
+
+def run(
+    journey_path: Path,
+    run_type: RunType = "analytics",
+    out_dir: Path | None = None,
+    headless: bool = False,
+) -> Path:
+    if run_type == "usability":
+        raise NotImplementedError(
+            "Usability Review Run is not implemented yet. "
+            "The capture phase works, but the analysis pass that scores the Run "
+            "against a Criteria version has not been built. Use --type analytics."
+        )
+
+    journey = load_journey(journey_path)
+    site_root = _find_site_root(journey_path)
 
     if out_dir is None:
-        stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        out_dir = Path("runs") / f"{stamp}_{script.session}"
+        stamp = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+        runs_root = site_root / "runs" if site_root else Path("runs")
+        out_dir = runs_root / f"{journey.journey}_{run_type}_{stamp}"
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "screenshots").mkdir(exist_ok=True)
+
+    # Freeze the Journey as executed.
+    shutil.copy2(journey_path, out_dir / "journey.yaml")
 
     har_path = out_dir / "session.har"
     requests_writer = JsonlWriter(out_dir / "requests.jsonl")
@@ -315,8 +365,10 @@ def run(script_path: Path, out_dir: Path | None = None, headless: bool = False) 
 
     tracker = StepTracker()
 
-    print(f"[tracker] Running session '{script.session}' → {out_dir}")
-    print(f"[tracker] Headless: {headless}")
+    print(f"[runner] Journey '{journey.journey}' ({run_type}) → {out_dir}")
+    print(f"[runner] Headless: {headless}")
+
+    success_result: dict[str, Any] | None = None
 
     try:
         with sync_playwright() as p:
@@ -325,7 +377,7 @@ def run(script_path: Path, out_dir: Path | None = None, headless: bool = False) 
                 args=["--disable-blink-features=AutomationControlled"],
             )
             context = browser.new_context(
-                viewport={"width": script.viewport.width, "height": script.viewport.height},
+                viewport={"width": journey.viewport.width, "height": journey.viewport.height},
                 record_har_path=str(har_path),
                 record_har_content="embed",
             )
@@ -341,10 +393,10 @@ def run(script_path: Path, out_dir: Path | None = None, headless: bool = False) 
             page.on("console", _make_console_handler(console_writer, tracker))
 
             # Pre-flight navigation to start_url if first step is not already a goto.
-            if not (script.steps and script.steps[0].action == "goto"):
-                page.goto(script.start_url, wait_until="load")
+            if not (journey.steps and journey.steps[0].action == "goto"):
+                page.goto(journey.start_url, wait_until="load")
 
-            for step in script.steps:
+            for step in journey.steps:
                 step_record: dict[str, Any] = {
                     "id": step.id,
                     "action": step.action,
@@ -352,7 +404,7 @@ def run(script_path: Path, out_dir: Path | None = None, headless: bool = False) 
                     "start_epoch": _ts(),
                 }
                 tracker.set(step.id)
-                print(f"[tracker] step {step.id}: {step.action}")
+                print(f"[runner] step {step.id}: {step.action}")
 
                 before_path = out_dir / "screenshots" / f"{step.id}_before.png"
                 try:
@@ -366,7 +418,7 @@ def run(script_path: Path, out_dir: Path | None = None, headless: bool = False) 
                     _execute_step(page, step)
                 except Exception as e:
                     error = repr(e)
-                    print(f"[tracker]   ERROR: {error}")
+                    print(f"[runner]   ERROR: {error}")
 
                 after_path = out_dir / "screenshots" / f"{step.id}_after.png"
                 try:
@@ -390,6 +442,14 @@ def run(script_path: Path, out_dir: Path | None = None, headless: bool = False) 
                 steps_writer.write(step_record)
 
             tracker.set(None)
+
+            success_result = _evaluate_success(page, journey.success_condition)
+            if success_result.get("check"):
+                passed = success_result["check"].get("passed")
+                print(f"[runner] success_condition.check: {'PASS' if passed else 'FAIL'}")
+            else:
+                print("[runner] success_condition: documentary only (no check)")
+
             context.close()
             browser.close()
     finally:
@@ -399,5 +459,17 @@ def run(script_path: Path, out_dir: Path | None = None, headless: bool = False) 
         datalayer_writer.close()
         steps_writer.close()
 
-    print(f"[tracker] Done. Artifact: {out_dir}")
+        run_meta = {
+            "journey": journey.journey,
+            "role": journey.role,
+            "use_case": journey.use_case,
+            "run_type": run_type,
+            "runner_version": __version__,
+            "site": site_root.name if site_root else None,
+            "success_condition": success_result,
+        }
+        with open(out_dir / "run.json", "w") as f:
+            json.dump(run_meta, f, indent=2, default=str)
+
+    print(f"[runner] Done. Artifact: {out_dir}")
     return out_dir

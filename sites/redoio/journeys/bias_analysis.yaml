@@ -1,10 +1,18 @@
-session: bias_analysis
+journey: bias_analysis
+role: legal
+use_case: null   # candidate Use Case: "detect demographic disparities in sentencing for an RJA claim"
 start_url: https://tool.redoio.info/bias_analysis
 viewport:
   width: 1280
   height: 800
 consent:
   strategy: ignore
+success_condition:
+  description: Bias metrics are calculated for White vs Hispanic in Alameda armed-robbery cases and the Bias Analysis Report renders.
+  check:
+    type: selector_visible
+    selector: 'text=Bias Analysis Report'
+
 steps:
 - id: goto_bias_analysis
   action: goto

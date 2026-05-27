@@ -1,0 +1,5 @@
+# `success_condition` is documentary by default, with an optional executable `check`
+
+Every Journey must declare a `success_condition.description` in plain English — what it means for this Journey to have completed successfully. A Journey may *additionally* declare `success_condition.check` (e.g. `selector_visible`), which the runner evaluates programmatically at the end of the Run.
+
+The obvious alternatives were (a) requiring an executable check on every Journey, or (b) leaving success entirely undefined. Requiring an executable check would block authoring of exploratory Journeys where success is judgemental (a UX assessment, a "does this feel right" walk-through). Leaving success undefined would deny Analytics Data Collection Runs any regression signal beyond "the steps did not throw." The split lets every Journey be authored quickly and lets the ones that warrant regression-grade assertions opt in. A Usability Review Run may flag the absence of `check` as a finding ("no programmatic success criterion") without blocking Run execution.

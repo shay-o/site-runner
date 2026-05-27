@@ -1,0 +1,25 @@
+# Roles selectable on Redo.io's Role selector, plus the implicit default
+# used by Journeys that traverse Tools without a selector.
+#
+# Referenced by Journey YAML `role:` fields. The runner validates that every
+# Journey's role matches one of these slugs.
+
+roles:
+  - slug: legal
+    label: Legal
+    personas: [Public Defender, District Attorney, Paralegal, Legal Assistant]
+
+  - slug: technical
+    label: Technical
+    personas: [Data Scientist, Engineer, Analyst]
+
+  - slug: general
+    label: General
+    personas: [Journalist, Academic Researcher, Community Advocate]
+
+  - slug: default
+    label: Default
+    personas: []
+    note: >
+      Implicit Role used by Journeys traversing Tools where the Role selector
+      is absent. See open question 4 in purpose.md.

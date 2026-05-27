@@ -43,15 +43,33 @@ class Consent(BaseModel):
     strategy: Literal["accept_all", "pre_seed_cookies", "ignore", "custom"] = "ignore"
 
 
-class ActionScript(BaseModel):
-    session: str
+class SuccessCheck(BaseModel):
+    type: Literal["selector_visible"]
+    selector: str
+
+
+class SuccessCondition(BaseModel):
+    description: str
+    check: SuccessCheck | None = None
+
+
+class Journey(BaseModel):
+    journey: str                       # slug; must match filename stem
+    role: str                          # must match a slug declared in the Site's roles.yaml
+    use_case: str | None = None        # filename stem under sites/<site>/use-cases/, or null
     start_url: str
     viewport: Viewport = Field(default_factory=Viewport)
     consent: Consent = Field(default_factory=Consent)
+    success_condition: SuccessCondition
     steps: list[Step]
 
 
-def load_script(path: Path) -> ActionScript:
+def load_journey(path: Path) -> Journey:
     with open(path) as f:
         data: dict[str, Any] = yaml.safe_load(f)
-    return ActionScript.model_validate(data)
+    j = Journey.model_validate(data)
+    if j.journey != path.stem:
+        raise ValueError(
+            f"Journey slug '{j.journey}' must match filename stem '{path.stem}' ({path})"
+        )
+    return j
