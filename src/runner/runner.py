@@ -335,6 +335,8 @@ def run(
     run_type: RunType = "analytics",
     out_dir: Path | None = None,
     headless: bool = False,
+    timeout_ms: int = 15000,
+    fail_fast: bool = False,
 ) -> Path:
     if run_type == "usability":
         raise NotImplementedError(
@@ -384,6 +386,10 @@ def run(
             context.add_init_script(WEBDRIVER_HIDE_SCRIPT)
 
             page = context.new_page()
+            # Cap how long a single locator action waits before failing. Without
+            # this, a wrong/ambiguous locator blocks for Playwright's 30s default,
+            # and a failed early step makes every dependent step hang in turn.
+            page.set_default_timeout(timeout_ms)
 
             on_req, on_resp, on_req_failed = _make_request_handler(requests_writer, tracker)
             page.on("request", on_req)
@@ -440,6 +446,10 @@ def run(
                 if error:
                     step_record["error"] = error
                 steps_writer.write(step_record)
+
+                if error and fail_fast:
+                    print(f"[runner] fail-fast: stopping after errored step '{step.id}'")
+                    break
 
             tracker.set(None)
 

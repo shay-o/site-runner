@@ -189,8 +189,12 @@ _RECORD_JS = r"""
       const isClickable = (
         tag === 'BUTTON' || tag === 'A' || tag === 'SUMMARY' ||
         (tag === 'INPUT' && ['submit', 'button', 'checkbox', 'radio'].includes(el.type)) ||
+        // combobox/listbox capture the click that OPENS a Streamlit
+        // selectbox/multiselect — without it, only the option-select inside
+        // gets recorded and the replayed Journey can't find the option.
         ['button', 'link', 'menuitem', 'menuitemcheckbox', 'menuitemradio',
-         'option', 'tab', 'checkbox', 'radio', 'switch', 'treeitem'].includes(role)
+         'option', 'tab', 'checkbox', 'radio', 'switch', 'treeitem',
+         'combobox', 'listbox'].includes(role)
       );
       if (isClickable) { found = el; break; }
       el = el.parentElement;

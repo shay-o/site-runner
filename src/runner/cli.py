@@ -23,6 +23,10 @@ def main() -> int:
     )
     run_p.add_argument("--out", type=Path, default=None, help="Output directory (default: sites/<slug>/runs/<journey>_<type>_<timestamp>)")
     run_p.add_argument("--headless", action="store_true", help="Run in headless mode")
+    run_p.add_argument("--timeout-ms", type=int, default=15000, metavar="MS",
+                       help="Max time a single step's locator action waits before failing (default: 15000)")
+    run_p.add_argument("--fail-fast", action="store_true",
+                       help="Stop the Run after the first errored step instead of continuing")
 
     rec_p = sub.add_parser("record", help="Record browser interactions into a Journey YAML")
     rec_p.add_argument("url", help="Starting URL to open")
@@ -37,7 +41,14 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.cmd == "run":
-        run(args.journey, run_type=args.run_type, out_dir=args.out, headless=args.headless)
+        run(
+            args.journey,
+            run_type=args.run_type,
+            out_dir=args.out,
+            headless=args.headless,
+            timeout_ms=args.timeout_ms,
+            fail_fast=args.fail_fast,
+        )
         return 0
 
     if args.cmd == "record":
