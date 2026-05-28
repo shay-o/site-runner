@@ -1,0 +1,51 @@
+journey: scenario-builder
+role: legal
+use_case: null
+start_url: https://tool.redoio.info/
+viewport:
+  width: 1280
+  height: 800
+consent:
+  strategy: ignore
+success_condition:
+  description: Scenario Builder loads the Entire-prison-population dataset and the data preview appears.
+  check:
+    type: selector_visible
+    selector: 'text=Upload successful'
+
+steps:
+- id: load_home
+  action: goto
+  url: https://tool.redoio.info/
+  wait_for: load
+  settle: {wait_ms: 3000}
+
+- id: open_scenario_builder
+  action: click
+  # "Scenario Builder" matches 3 links (sidebar nav, a new-tab duplicate, an
+  # in-page st.page_link). first:true targets the sidebar nav link.
+  locator: {role: link, name: Scenario Builder, first: true}
+  settle: {wait_ms: 2000}
+
+- id: load_dataset
+  action: click
+  # Default source (Entire prison population) + version (2023) are pre-selected.
+  locator: {role: button, name: Load}
+  settle: {wait_for_selector: 'text=Upload successful', wait_ms: 2000}
+
+# --- Find Similarly Situated Cases (the criterion-builder flow) ---
+#
+# NOT YET SCRIPTED. This part of Scenario Builder is a hard automation target:
+#   * The "Table A/B/C" offense-categorization grid is a CANVAS-rendered editable
+#     dataframe — individual cells are not real DOM elements, so they can't be
+#     targeted by role/name. (The recorder mis-captured these as role: option.)
+#   * The "Filter on:" radios have hidden <input> elements with no accessible
+#     name; they must be clicked by visible LABEL TEXT, e.g.
+#         locator: {text: County}
+#   * The filter controls are lazy-rendered — they only enter the DOM after the
+#     page is scrolled down.
+#   * The sticky "AI powers two features" footer intercepts pointer events on
+#     controls near the bottom of the viewport, so the county multiselect can't
+#     be clicked without first scrolling it clear of the footer.
+#
+# See the session notes for the full diagnosis before extending this Journey.

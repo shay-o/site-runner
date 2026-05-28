@@ -105,10 +105,41 @@ _RECORD_JS = r"""
     return parts.join(' > ');
   }
 
+  // Normalize whitespace + case the way Playwright does when matching names.
+  function normName(s) {
+    return (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  // Count how many elements a role+name locator would match. Playwright's
+  // get_by_role(role, name=...) defaults to exact=False: a whitespace-normalized,
+  // case-insensitive SUBSTRING match against the accessible name. We replicate
+  // that so the recorder can flag ambiguous locators and add first:true — without
+  // it, locators like {role:link, name:"Scenario Builder"} blow up at replay time
+  // with a strict-mode violation when several elements share the name.
+  function countRoleNameMatches(role, name) {
+    const target = normName(name);
+    if (!target) return 0;
+    let count = 0;
+    const all = document.querySelectorAll('*');
+    for (let i = 0; i < all.length; i++) {
+      if (getRole(all[i]) !== role) continue;
+      const an = normName(getAccessibleName(all[i]));
+      if (an && an.indexOf(target) !== -1) {
+        count++;
+        if (count > 1) break;  // only need to know "more than one"
+      }
+    }
+    return count;
+  }
+
   function buildLocator(el) {
     const role = getRole(el);
     const name = getAccessibleName(el);
-    if (role && name) return { role: role, name: name };
+    if (role && name) {
+      const loc = { role: role, name: name };
+      if (countRoleNameMatches(role, name) > 1) loc.first = true;
+      return loc;
+    }
     // No name — try text content for non-form elements
     const txt = el.textContent && el.textContent.trim();
     if (!role && txt && txt.length <= 80) return { text: txt };
